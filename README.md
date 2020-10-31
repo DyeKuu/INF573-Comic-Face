@@ -1,1 +1,13 @@
 # INF573-Comic-Face
+
+### Pipeline
+
+1. Detect humain face by using MTCNN (https://github.com/davidsandberg/facenet). 
+
+2. Label comic faces.
+
+3. Replace humain face by comic faces by H matrix.
+
+4. Write an android application.
+
+(5. If we have time, we can try an algorithm to find the comic figutre who is most similar with the given photo. Or implement MTCNN algorithm by ourselves in Pytorch (Now they are all implemented by Tensorflow).)
