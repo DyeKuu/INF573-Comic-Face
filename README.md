@@ -2,9 +2,9 @@
 
 ### Pipeline
 
-1. Detect humain face by using MTCNN (https://github.com/davidsandberg/facenet). 
+1. Detect humain face by using MTCNN (https://github.com/davidsandberg/facenet). Label the position of the eyes and the mouth etc.
 
-2. Label comic faces.
+2. Label comic faces manually on the eyes and the mouth, etc. Calculated the H matrix using these labelled point.
 
 3. Replace humain face by comic faces by H matrix.
 
