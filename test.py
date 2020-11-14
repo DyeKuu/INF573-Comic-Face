@@ -19,4 +19,13 @@ def test_rotateImage():
     cv.destroyAllWindows()
 
 
-test_rotateImage()
+def test_fusion():
+    from image import Image, TwoImages
+    a = TwoImages(person_filename="img.PNG", comic_filename="ki.png")
+    im = a.fusion()
+    cv.imshow("Rotation", im)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
+
+test_fusion()

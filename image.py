@@ -88,3 +88,20 @@ class TwoImages():
             cv.line(full_image, res1[k], (res2[k][0] +
                                           width, res2[k][1]), (0, 255, 0), thickness=2)
         return full_image
+
+    def fusion(self):
+        real_pts, comic_pts = self.detect_res()
+        self.ComicImage.convert_to_real_image()
+        height, width, _channels = self.PersonImage.image_shape()
+        self.M, _mask = cv.findHomography(np.array(list(comic_pts.values())), np.array(
+            list(real_pts.values())), cv.RANSAC, 5.0)
+        dst = cv.warpPerspective(
+            self.ComicImage.im, self.M, (width, height))  # wraped image
+        for i in range(height):
+            if (dst[i, ] == 0).all():
+                dst[i, ] = self.PersonImage.im[i, ]
+                continue
+            for j in range(width):
+                if (dst[i, j] == 0).all():
+                    dst[i, j] = self.PersonImage.im[i, j]
+        return dst
