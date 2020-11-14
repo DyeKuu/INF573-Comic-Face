@@ -43,24 +43,31 @@ class Image():
         if self.isConverted:
             self.convert()
 
-    @staticmethod
-    def rotate_image(image, res):
-        right_eye = np.array(res['right_eye'])
-        left_eye = np.array(res['left_eye'])
-        nose = np.array(res['nose'])
+    def rotate_image(self):
+        right_eye = np.array(self.res['right_eye'])
+        left_eye = np.array(self.res['left_eye'])
+        nose = np.array(self.res['nose'])
         x = (right_eye + left_eye)/2 - nose
         Lx = np.sqrt(x.dot(x))
         print(x)
         cos_angle = -x[1]/Lx
-        angle = np.arccos(cos_angle)*360/2/np.pi
-        M = cv.getRotationMatrix2D(tuple(nose), angle, 1.0)
-        print(image.shape)
-        rotated = cv.warpAffine(image, M, dsize=(
-            image.shape[0], image.shape[1]))
+        self.rotate_angle = np.arccos(cos_angle)*360/2/np.pi
+        self.rotate_center = tuple(nose)
+        self.rotation_matrix = cv.getRotationMatrix2D(
+            self.rotate_center, self.rotate_angle, 1.0)  # Maybe we don't need this affection
+        print(self.im.shape)
+        rotated = cv.warpAffine(self.im, self.rotation_matrix, dsize=(
+            self.im.shape[0], self.im.shape[1]))
         return rotated
 
-    def rotate(self):
-        return Image.rotate_image(self.im, self.res)
+    def rotate(self, apply=False):
+        """
+        apply: If the rotation applies to the image
+        """
+        res = self.rotate_image()
+        if apply:
+            self.im = res
+        return res
 
 
 class TwoImages():
@@ -97,6 +104,35 @@ class TwoImages():
             list(real_pts.values())), cv.RANSAC, 5.0)
         dst = cv.warpPerspective(
             self.ComicImage.im, self.M, (width, height))  # wraped image
+        for i in range(height):
+            if (dst[i, ] == 0).all():
+                dst[i, ] = self.PersonImage.im[i, ]
+                continue
+            for j in range(width):
+                if (dst[i, j] == 0).all():
+                    dst[i, j] = self.PersonImage.im[i, j]
+        return dst
+
+    def fusion_rotated(self):
+        self.detect_res()
+        self.ComicImage.rotate(apply=True)
+        person_image_rotated = self.PersonImage.rotate(apply=False)
+        real_pts, comic_pts = Image(
+            input=person_image_rotated).detect_face(), self.ComicImage.detect_face()
+        self.ComicImage.convert_to_real_image()
+
+        height, width, _channels = self.PersonImage.image_shape()
+        self.M, _mask = cv.findHomography(np.array(list(comic_pts.values())), np.array(
+            list(real_pts.values())), cv.RANSAC, 5.0)
+        dst = cv.warpPerspective(
+            self.ComicImage.im, self.M, (width, height))
+
+        reverse_matrix = cv.getRotationMatrix2D(
+            self.PersonImage.rotate_center, -self.PersonImage.rotate_angle, 1.0)
+
+        dst = cv.warpAffine(dst, reverse_matrix, dsize=(
+            width, height))
+
         for i in range(height):
             if (dst[i, ] == 0).all():
                 dst[i, ] = self.PersonImage.im[i, ]

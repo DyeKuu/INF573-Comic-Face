@@ -23,9 +23,18 @@ def test_fusion():
     from image import Image, TwoImages
     a = TwoImages(person_filename="img.PNG", comic_filename="ki.png")
     im = a.fusion()
-    cv.imshow("Rotation", im)
+    cv.imshow("Fusion", im)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
 
-test_fusion()
+def test_fusion_rotated():
+    from image import Image, TwoImages
+    a = TwoImages(person_filename="img.PNG", comic_filename="ki.png")
+    im = a.fusion_rotated()
+    cv.imshow("Fusion_rotated", im)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
+
+test_fusion_rotated()
