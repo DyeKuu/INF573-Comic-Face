@@ -18,7 +18,7 @@ class Image():
 
         self.isConverted = False
         if convert:
-            self.convert_image()
+            self.convert()
         self.res = None
 
     def detect_face(self):
@@ -31,13 +31,17 @@ class Image():
     def image_shape(self):
         return self.im.shape
 
-    def convert_image(self):
+    def convert(self):
         if self.isConverted:
             self.isConverted = False
             self.im = cv.cvtColor(self.im, cv.COLOR_BGR2RGB)
         else:
             self.isConverted = True
             self.im = cv.cvtColor(self.im, cv.COLOR_RGB2BGR)
+
+    def convert_to_real_image(self):
+        if self.isConverted:
+            self.convert()
 
 
 class TwoImages():
@@ -57,8 +61,8 @@ class TwoImages():
     def compare(self):
         res1, res2 = self.detect_res()
         _height, width, _channels = self.PersonImage.image_shape()
-        if self.ComicImage.isConverted:
-            self.ComicImage.convert_image()
+        self.ComicImage.convert_to_real_image()
+
         full_image = cv.hconcat([self.PersonImage.im, self.ComicImage.im])
 
         for k in res1:
