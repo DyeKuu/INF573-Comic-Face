@@ -43,6 +43,25 @@ class Image():
         if self.isConverted:
             self.convert()
 
+    @staticmethod
+    def rotate_image(image, res):
+        right_eye = np.array(res['right_eye'])
+        left_eye = np.array(res['left_eye'])
+        nose = np.array(res['nose'])
+        x = (right_eye + left_eye)/2 - nose
+        Lx = np.sqrt(x.dot(x))
+        print(x)
+        cos_angle = -x[1]/Lx
+        angle = np.arccos(cos_angle)*360/2/np.pi
+        M = cv.getRotationMatrix2D(tuple(nose), angle, 1.0)
+        print(image.shape)
+        rotated = cv.warpAffine(image, M, dsize=(
+            image.shape[0], image.shape[1]))
+        return rotated
+
+    def rotate(self):
+        return Image.rotate_image(self.im, self.res)
+
 
 class TwoImages():
     def __init__(self, person_input=None, person_filename=None, comic_input=None, comic_filename=None):
@@ -69,17 +88,3 @@ class TwoImages():
             cv.line(full_image, res1[k], (res2[k][0] +
                                           width, res2[k][1]), (0, 255, 0), thickness=2)
         return full_image
-
-
-def rotate_image(image, res):
-    right_eye = np.array(res['right_eye'])
-    left_eye = np.array(res['left_eye'])
-    nose = np.array(res['nose'])
-    x = (right_eye + left_eye)/2 - nose
-    Lx = np.sqrt(x.dot(x))
-    cos_angle = x[0]/Lx
-    angle = np.arccos(cos_angle)*360/2/np.pi
-    M = cv.getRotationMatrix2D(tuple(nose), angle, 1.0)  # 12
-    rotated = cv.warpAffine(image, M, image.shape)  # 13
-
-    return rotated
