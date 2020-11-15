@@ -28,7 +28,7 @@ def compare_faces(filename1, filename2):
     return im1, cv.cvtColor(im2, cv.COLOR_BGR2RGB), res1, res2
 
 
-im1, im2, real_pts, comic_pts = compare_faces("img.PNG", "ki2.png")
+im1, im2, real_pts, comic_pts = compare_faces("human_pics/img.PNG", "comic_pics/ki2.png")
 height, width, channels = im1.shape
 print(np.array(list(real_pts.values())))
 # print(real_pts, comic_pts)
@@ -56,4 +56,4 @@ for i in range(height):
 cv.imshow("Face comparaison", dst)
 cv.waitKey(0)
 cv.destroyAllWindows()
-cv.imwrite("fusion.jpg", dst)
+cv.imwrite("results/fusion.jpg", dst)
