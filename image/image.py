@@ -102,6 +102,7 @@ class Image():
             cv.imwrite(face_path, face.im)
         cv.imwrite(path, self.im)
 
+
 class TwoImages():
     def __init__(self,
                  person_input=None,
@@ -223,3 +224,100 @@ class TwoImages():
                     dst[i, j] = self.person_image.im[i, j]
 
         return dst
+
+    def rgb2lab(self, im):
+        rgb2lms = np.array([[0.3811, 0.5783, 0.0402], [0.1967,0.7244,0.0782], [0.0241, 0.1288, 0.8444]])
+        im_ = im.dot(rgb2lms)
+        im_[im_ == 0] = 0.00001
+        log_rgb2lms = np.log10(im_)
+        mat1 = np.diag([1/np.sqrt(3), 1/np.sqrt(6), 1/np.sqrt(2)])
+        mat2 = np.array([[1,1,1], [1,1,-2], [1,-1,0]])
+        return log_rgb2lms.dot(mat1).dot(mat2)
+
+    def lab2rgb(self, im):
+        mat1 = np.diag([1/np.sqrt(3), 1/np.sqrt(6), 1/np.sqrt(2)])
+        mat2 = np.array([[1,1,1], [1,1,-2], [1,-1,0]])
+        log_lms2rgb = np.power(10, im.dot(mat2.T).dot(mat1))
+        lms2rgb = np.array([[4.4679, -3.5873, 0.1193], [-1.2186, 2.3809, -0.1624], [0.0497, -0.2439, 1.2045]])
+
+        return log_lms2rgb.dot(lms2rgb)
+
+    @staticmethod
+    def image_stats(image):
+        # compute the mean and standard deviation of each channel
+        (l, a, b) = cv.split(image)
+        (lMean, lStd) = (l.mean(), l.std())
+        (aMean, aStd) = (a.mean(), a.std())
+        (bMean, bStd) = (b.mean(), b.std())
+
+        # return the color statistics
+        return (lMean, lStd, aMean, aStd, bMean, bStd)
+
+    def transfer_color(self):
+        source = self.comic_image.im
+        target = self.person_image.im
+        source = cv.cvtColor(source, cv.COLOR_BGR2LAB).astype("float32")
+        target = cv.cvtColor(target, cv.COLOR_BGR2LAB).astype("float32")
+        (lMeanSrc, lStdSrc, aMeanSrc, aStdSrc, bMeanSrc, bStdSrc) = TwoImages.image_stats(source)
+        (lMeanTar, lStdTar, aMeanTar, aStdTar, bMeanTar, bStdTar) = TwoImages.image_stats(target)
+        # subtract the means from the target image
+        (l, a, b) = cv.split(target)
+        l -= lMeanTar
+        a -= aMeanTar
+        b -= bMeanTar
+        # scale by the standard deviations
+        l = (lStdTar / lStdSrc) * l
+        a = (aStdTar / aStdSrc) * a
+        b = (bStdTar / bStdSrc) * b
+        # add in the source mean
+        l += lMeanSrc
+        a += aMeanSrc
+        b += bMeanSrc
+        # clip the pixel intensities to [0, 255] if they fall outside
+        # this range
+        l = np.clip(l, 0, 255)
+        a = np.clip(a, 0, 255)
+        b = np.clip(b, 0, 255)
+        # merge the channels together and convert back to the RGB color
+        # space, being sure to utilize the 8-bit unsigned integer data
+        # type
+        transfer = cv.merge([l, a, b])
+        transfer = cv.cvtColor(transfer.astype("uint8"), cv.COLOR_LAB2BGR)
+        # show and return the color transferred image
+        cv.imshow("transfer", transfer)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+        return transfer
+
+
+        # im_src = self.person_image.im
+        # im_tgt = self.comic_image.im
+        # # Transfer
+        # im_src_lab = self.rgb2lab(im_src)
+        # im_tgt_lab = self.rgb2lab(im_tgt)
+        # # Project to objective image
+        # diff = np.array([im_tgt_lab[:, :, i].std() / im_src[:, :, i].std() for i in range(3)])
+        # im_tgt_lab = im_tgt_lab - im_tgt_lab.mean(axis=0).mean(axis=0)
+        # im_tgt_lab =im_tgt_lab*diff
+        # im_lab = im_tgt_lab + im_src_lab.mean(axis=0).mean(axis=0)
+        # im_lab = np.clip(im_lab, 0, 255)
+        #
+        # # Transfer back
+        # transfer = cv.merge([l, a, b])
+        # transfer = cv.cvtColor(transfer.astype("uint8"), cv.COLOR_LAB2BGR)
+        # print(im_lab)
+        # cv.imshow("original", im_src)
+        # cv.waitKey(0)
+        # cv.imshow("transfert", im_lab)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+        #
+        # return im_lab
+
+
+
+
+
+
+    

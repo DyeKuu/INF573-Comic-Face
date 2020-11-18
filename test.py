@@ -94,4 +94,9 @@ def test_video():
     a.process_video()
 
 
+def test_color_transfer():
+    from image.image import TwoImages
+    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
+    a.transfer_color()
+
 test_TwoImages()
