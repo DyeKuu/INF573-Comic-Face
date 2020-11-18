@@ -60,7 +60,7 @@ def test_with_face_rotated():
     a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="face_pics/sensei.png")
     im = a.fusion_rotated(face_filename="face_pics/face_sensei.png")
     cv.imshow("Fusion_rotated", im)
-    cv.imwrite("result/sensei.png", im)
+    cv.imwrite("results/sensei.png", im)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
@@ -97,10 +97,11 @@ def test_video():
 def test_color_transfer():
     from image.image import TwoImages
     import cv2 as cv
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
+    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki2.png")
     im = a.run_fusion(rotate=True, merge=True)
     cv.imshow("rotate and merge", im)
-    cv.imwrite("result/ki_merge.png", im)
+    cv.imwrite("results/ki_merge.png", im)
     cv.waitKey(0)
+    cv.imwrite("result/color_transfer.png", im)
 
 test_TwoImages()
