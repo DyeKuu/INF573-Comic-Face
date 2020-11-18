@@ -225,22 +225,13 @@ class TwoImages():
 
         return dst
 
-    def rgb2lab(self, im):
-        rgb2lms = np.array([[0.3811, 0.5783, 0.0402], [0.1967,0.7244,0.0782], [0.0241, 0.1288, 0.8444]])
-        im_ = im.dot(rgb2lms)
-        im_[im_ == 0] = 0.00001
-        log_rgb2lms = np.log10(im_)
-        mat1 = np.diag([1/np.sqrt(3), 1/np.sqrt(6), 1/np.sqrt(2)])
-        mat2 = np.array([[1,1,1], [1,1,-2], [1,-1,0]])
-        return log_rgb2lms.dot(mat1).dot(mat2)
-
-    def lab2rgb(self, im):
-        mat1 = np.diag([1/np.sqrt(3), 1/np.sqrt(6), 1/np.sqrt(2)])
-        mat2 = np.array([[1,1,1], [1,1,-2], [1,-1,0]])
-        log_lms2rgb = np.power(10, im.dot(mat2.T).dot(mat1))
-        lms2rgb = np.array([[4.4679, -3.5873, 0.1193], [-1.2186, 2.3809, -0.1624], [0.0497, -0.2439, 1.2045]])
-
-        return log_lms2rgb.dot(lms2rgb)
+    def run_fusion(self, rotate=True, merge=False, face_input=None, face_filename=None):
+        if merge:
+            self.transfer_color(apply=True)
+        if not rotate:
+            return self.fusion(face_input=face_input, face_filename=face_filename)
+        else:
+            return self.fusion_rotated(face_input=face_input, face_filename=face_filename)
 
     @staticmethod
     def image_stats(image):
@@ -253,9 +244,10 @@ class TwoImages():
         # return the color statistics
         return (lMean, lStd, aMean, aStd, bMean, bStd)
 
-    def transfer_color(self):
-        source = self.comic_image.im
-        target = self.person_image.im
+    def transfer_color(self, apply=False):
+        # Define target and source
+        source = self.person_image.im
+        target = self.comic_image.im
         source = cv.cvtColor(source, cv.COLOR_BGR2LAB).astype("float32")
         target = cv.cvtColor(target, cv.COLOR_BGR2LAB).astype("float32")
         (lMeanSrc, lStdSrc, aMeanSrc, aStdSrc, bMeanSrc, bStdSrc) = TwoImages.image_stats(source)
@@ -288,36 +280,10 @@ class TwoImages():
         cv.waitKey(0)
         cv.destroyAllWindows()
 
-        return transfer
+        tmp = self.comic_image.im.copy()
+        tmp[tmp != 0] = transfer[tmp != 0]
 
+        if apply:
+            self.comic_image.im = tmp
 
-        # im_src = self.person_image.im
-        # im_tgt = self.comic_image.im
-        # # Transfer
-        # im_src_lab = self.rgb2lab(im_src)
-        # im_tgt_lab = self.rgb2lab(im_tgt)
-        # # Project to objective image
-        # diff = np.array([im_tgt_lab[:, :, i].std() / im_src[:, :, i].std() for i in range(3)])
-        # im_tgt_lab = im_tgt_lab - im_tgt_lab.mean(axis=0).mean(axis=0)
-        # im_tgt_lab =im_tgt_lab*diff
-        # im_lab = im_tgt_lab + im_src_lab.mean(axis=0).mean(axis=0)
-        # im_lab = np.clip(im_lab, 0, 255)
-        #
-        # # Transfer back
-        # transfer = cv.merge([l, a, b])
-        # transfer = cv.cvtColor(transfer.astype("uint8"), cv.COLOR_LAB2BGR)
-        # print(im_lab)
-        # cv.imshow("original", im_src)
-        # cv.waitKey(0)
-        # cv.imshow("transfert", im_lab)
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
-        #
-        # return im_lab
-
-
-
-
-
-
-    
+        return tmp

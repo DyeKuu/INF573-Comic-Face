@@ -96,7 +96,11 @@ def test_video():
 
 def test_color_transfer():
     from image.image import TwoImages
+    import cv2 as cv
     a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
-    a.transfer_color()
+    im = a.run_fusion(rotate=True, merge=True)
+    cv.imshow("rotate and merge", im)
+    cv.imwrite("result/ki_merge.png", im)
+    cv.waitKey(0)
 
 test_TwoImages()
