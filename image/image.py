@@ -102,6 +102,7 @@ class Image():
             cv.imwrite(face_path, face.im)
         cv.imwrite(path, self.im)
 
+
 class TwoImages():
     def __init__(self,
                  person_input=None,
@@ -223,3 +224,66 @@ class TwoImages():
                     dst[i, j] = self.person_image.im[i, j]
 
         return dst
+
+    def run_fusion(self, rotate=True, merge=False, face_input=None, face_filename=None):
+        if merge:
+            self.transfer_color(apply=True)
+        if not rotate:
+            return self.fusion(face_input=face_input, face_filename=face_filename)
+        else:
+            return self.fusion_rotated(face_input=face_input, face_filename=face_filename)
+
+    @staticmethod
+    def image_stats(image):
+        # compute the mean and standard deviation of each channel
+        (l, a, b) = cv.split(image)
+        (lMean, lStd) = (l.mean(), l.std())
+        (aMean, aStd) = (a.mean(), a.std())
+        (bMean, bStd) = (b.mean(), b.std())
+
+        # return the color statistics
+        return (lMean, lStd, aMean, aStd, bMean, bStd)
+
+    def transfer_color(self, apply=False):
+        # Define target and source
+        source = self.person_image.im
+        target = self.comic_image.im
+        source = cv.cvtColor(source, cv.COLOR_BGR2LAB).astype("float32")
+        target = cv.cvtColor(target, cv.COLOR_BGR2LAB).astype("float32")
+        (lMeanSrc, lStdSrc, aMeanSrc, aStdSrc, bMeanSrc, bStdSrc) = TwoImages.image_stats(source)
+        (lMeanTar, lStdTar, aMeanTar, aStdTar, bMeanTar, bStdTar) = TwoImages.image_stats(target)
+        # subtract the means from the target image
+        (l, a, b) = cv.split(target)
+        l -= lMeanTar
+        a -= aMeanTar
+        b -= bMeanTar
+        # scale by the standard deviations
+        l = (lStdTar / lStdSrc) * l
+        a = (aStdTar / aStdSrc) * a
+        b = (bStdTar / bStdSrc) * b
+        # add in the source mean
+        l += lMeanSrc
+        a += aMeanSrc
+        b += bMeanSrc
+        # clip the pixel intensities to [0, 255] if they fall outside
+        # this range
+        l = np.clip(l, 0, 255)
+        a = np.clip(a, 0, 255)
+        b = np.clip(b, 0, 255)
+        # merge the channels together and convert back to the RGB color
+        # space, being sure to utilize the 8-bit unsigned integer data
+        # type
+        transfer = cv.merge([l, a, b])
+        transfer = cv.cvtColor(transfer.astype("uint8"), cv.COLOR_LAB2BGR)
+        # show and return the color transferred image
+        cv.imshow("transfer", transfer)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+        tmp = self.comic_image.im.copy()
+        tmp[tmp != 0] = transfer[tmp != 0]
+
+        if apply:
+            self.comic_image.im = tmp
+
+        return tmp
