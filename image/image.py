@@ -1,15 +1,15 @@
 # System package
+import numpy as np
+from mtcnn import MTCNN
+import cv2 as cv
 import os
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 # Third part package
-import cv2 as cv
-from mtcnn import MTCNN
-import numpy as np
 
 
 class Image():
-    def __init__(self, input=None, path=None, convert=False):
+    def __init__(self, input=None, path=None, convert=False, detector=None):
         '''
         Class to realise basic operations for images
         Input:
@@ -28,11 +28,11 @@ class Image():
         self.isConverted = False
         if convert:
             self.convert()
-        self.res = None # detect result by MTCNN
+        self.res = None  # detect result by MTCNN
+        self.detector = MTCNN() if detector is None else detector
 
     def detect_face(self):
-        detector = MTCNN()
-        self.res = detector.detect_faces(self.im)[0]["keypoints"]
+        self.res = self.detector.detect_faces(self.im)[0]["keypoints"]
         self.convert2real_image()
         print(self.res)
 
@@ -97,8 +97,9 @@ class Image():
         self.rotate_image(apply=True)
         self.convert2real_image()
         if face_path is not None:
-            face = Image(path=face_path)
-            face.rotate_image(rotate_angle=self.rotate_angle, rotate_center=self.rotate_center, apply=True)
+            face = Image(path=face_path, detector=self.detector)
+            face.rotate_image(rotate_angle=self.rotate_angle,
+                              rotate_center=self.rotate_center, apply=True)
             cv.imwrite(face_path, face.im)
         cv.imwrite(path, self.im)
 
@@ -108,7 +109,8 @@ class TwoImages():
                  person_input=None,
                  person_filename=None,
                  comic_input=None,
-                 comic_filename=None):
+                 comic_filename=None,
+                 detector=None):
         """
         Core Class for this package: Class to compare and fusion 2 images.
         Input:
@@ -116,17 +118,21 @@ class TwoImages():
             * person_filename: path of the human image (input and path can not both be None)
             * comic_input: a comic image matrix
             * comic_filename: path of the comic image (input and path can not both be None)
+            * detector: a face detector class
         """
-        self.person_image = Image(input=person_input, path=person_filename)
-        self.comic_image = Image(input=comic_input, path=comic_filename, convert=True)
+        self.person_image = Image(
+            input=person_input, path=person_filename, detector=detector)
+        self.comic_image = Image(
+            input=comic_input, path=comic_filename, convert=True, detector=detector)
         self.height, self.width, _channels = self.person_image.image_shape()
-        self.comic_width = int(self.height / self.comic_image.image_shape()[0] * self.comic_image.image_shape()[1])
+        self.comic_width = int(
+            self.height / self.comic_image.image_shape()[0] * self.comic_image.image_shape()[1])
         self.comic_image.im = cv.resize(self.comic_image.im, (self.comic_width, self.height),
-                                                              interpolation=cv.INTER_AREA)
+                                        interpolation=cv.INTER_AREA)
         # self.comic_image.im = cv.resize(self.comic_image.im, (self.height, self.width),
         #                                interpolation=cv.INTER_AREA) # Resize to show the comparison
 
-        self.fusion_res = None # fusion result of those two images
+        self.fusion_res = None  # fusion result of those two images
 
     def replace_with_face(self, face_input, face_filename):
         '''
@@ -145,7 +151,7 @@ class TwoImages():
         else:
             face_im = face_input
         face_im = cv.resize(face_im, (self.width, self.height),
-                                        interpolation=cv.INTER_AREA)
+                            interpolation=cv.INTER_AREA)
 
         self.comic_image.im = face_im
 
@@ -178,7 +184,8 @@ class TwoImages():
         self.M, _mask = cv.findHomography(np.array(list(comic_pts.values())), np.array(
             list(real_pts.values())), cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
-            self.replace_with_face(face_input=face_input, face_filename=face_filename)
+            self.replace_with_face(face_input=face_input,
+                                   face_filename=face_filename)
         dst = cv.warpPerspective(
             self.comic_image.im, self.M, (self.width, self.height))  # wraped image
         for i in range(self.height):
@@ -206,14 +213,16 @@ class TwoImages():
 
         self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
-            self.replace_with_face(face_input=face_input, face_filename=face_filename)
+            self.replace_with_face(face_input=face_input,
+                                   face_filename=face_filename)
         dst = cv.warpPerspective(
             self.comic_image.im, self.M, (self.width, self.height))
 
         reverse_matrix = cv.getRotationMatrix2D(
             self.person_image.rotate_center, -self.person_image.rotate_angle, 1.0)
 
-        dst = cv.warpAffine(dst, reverse_matrix, dsize=(self.width, self.height))
+        dst = cv.warpAffine(dst, reverse_matrix,
+                            dsize=(self.width, self.height))
 
         for i in range(self.height):
             if (dst[i, ] == 0).all():
@@ -250,8 +259,10 @@ class TwoImages():
         target = self.comic_image.im
         source = cv.cvtColor(source, cv.COLOR_BGR2LAB).astype("float32")
         target = cv.cvtColor(target, cv.COLOR_BGR2LAB).astype("float32")
-        (lMeanSrc, lStdSrc, aMeanSrc, aStdSrc, bMeanSrc, bStdSrc) = TwoImages.image_stats(source)
-        (lMeanTar, lStdTar, aMeanTar, aStdTar, bMeanTar, bStdTar) = TwoImages.image_stats(target)
+        (lMeanSrc, lStdSrc, aMeanSrc, aStdSrc, bMeanSrc,
+         bStdSrc) = TwoImages.image_stats(source)
+        (lMeanTar, lStdTar, aMeanTar, aStdTar, bMeanTar,
+         bStdTar) = TwoImages.image_stats(target)
         # subtract the means from the target image
         (l, a, b) = cv.split(target)
         l -= lMeanTar

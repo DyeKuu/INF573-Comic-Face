@@ -3,7 +3,8 @@ import cv2 as cv
 
 def test_TwoImages():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="comic_pics/ki.png")
     im = a.compare()
     cv.imshow("Face comparaison", im)
     cv.waitKey(0)
@@ -21,7 +22,8 @@ def test_rotateImage():
 
 def test_fusion():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="comic_pics/ki.png")
     im = a.fusion()
     cv.imshow("Fusion", im)
     cv.waitKey(0)
@@ -30,7 +32,8 @@ def test_fusion():
 
 def test_fusion_rotated():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="comic_pics/ki.png")
     im = a.fusion_rotated()
     cv.imshow("Fusion_rotated", im)
     cv.waitKey(0)
@@ -39,7 +42,8 @@ def test_fusion_rotated():
 
 def test_TwoImages_with_face():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="face_pics/sensei.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="face_pics/sensei.png")
     im = a.compare()
     cv.imshow("Face comparaison", im)
     cv.waitKey(0)
@@ -48,7 +52,8 @@ def test_TwoImages_with_face():
 
 def test_with_face():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="face_pics/sensei.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="face_pics/sensei.png")
     im = a.fusion(face_filename="face_pics/face_sensei.png")
     cv.imshow("Fusion_rotated", im)
     cv.waitKey(0)
@@ -57,7 +62,8 @@ def test_with_face():
 
 def test_with_face_rotated():
     from image.image import TwoImages
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="face_pics/sensei.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="face_pics/sensei.png")
     im = a.fusion_rotated(face_filename="face_pics/face_sensei.png")
     cv.imshow("Fusion_rotated", im)
     cv.imwrite("results/sensei.png", im)
@@ -97,11 +103,13 @@ def test_video():
 def test_color_transfer():
     from image.image import TwoImages
     import cv2 as cv
-    a = TwoImages(person_filename="human_pics/img.PNG", comic_filename="comic_pics/ki2.png")
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="comic_pics/ki2.png")
     im = a.run_fusion(rotate=True, merge=True)
     cv.imshow("rotate and merge", im)
     cv.imwrite("results/ki_merge.png", im)
     cv.waitKey(0)
     cv.imwrite("result/color_transfer.png", im)
 
-test_TwoImages()
+
+test_video()
