@@ -20,6 +20,9 @@ import glob
 # import random
 import random
 
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
 
 def load_image(fn, image_size):
     """
@@ -28,6 +31,7 @@ def load_image(fn, image_size):
     image_size: size expected
     """
     im = load_img(fn)
+    shape = im.size
     # Cut the image: get the maximal square at the centre and resize the image
     # crop: cut the image, input (x1, y1, x2, y2) positions for left-up and right-down image
     if (im.size[0] >= im.size[1]):
@@ -36,10 +40,10 @@ def load_image(fn, image_size):
         im = im.crop((0, (im.size[1] - im.size[0]) // 2, im.size[0], (im.size[0] + im.size[1]) // 2))
     # resize
     im = im.resize((image_size, image_size))
-    # transfer int from 0 to 255 into [0, 1]
+    # transfer int from 0 to 255 into [-1, 1]
     arr = img_to_array(im) / 255 * 2 - 1
 
-    return arr
+    return arr, shape
 
 class DataSet(object):
     """
@@ -59,7 +63,7 @@ class DataSet(object):
         # https://docs.python.org/3/library/glob.html
         self.data_list = glob.glob(self.data_path)
         "/home/su*.jpg"
-        # random.shuffle 打乱列表
+        # random.shuffle disorder the list
         # https://docs.python.org/3/library/random.html#random.shuffle
         random.shuffle(self.data_list)
         # initiate the pointer
@@ -72,16 +76,16 @@ class DataSet(object):
         if (self.ptr + batchsize >= len(self.data_list)):
             # Case when all the pictures have been taken out
             # add pictures in the list
-            batch = [load_image(x, self.image_size) for x in self.data_list[self.ptr:]]
+            batch = [load_image(x, self.image_size)[0] for x in self.data_list[self.ptr:]]
             rest = self.ptr + batchsize - len(self.data_list)
             # re-initiate the list
             self.__init_list()
             # add the rest
-            batch.extend([load_image(x, self.image_size) for x in self.data_list[:rest]])
+            batch.extend([load_image(x, self.image_size)[0] for x in self.data_list[:rest]])
             self.ptr = rest
             self.epoch += 1
         else:
-            batch = [load_image(x, self.image_size) for x in self.data_list[self.ptr:self.ptr + batchsize]]
+            batch = [load_image(x, self.image_size)[0] for x in self.data_list[self.ptr:self.ptr + batchsize]]
             self.ptr += batchsize
 
         return self.epoch, np.array(batch)
@@ -91,7 +95,7 @@ class DataSet(object):
         Take num pictures for snapshot
         This will not influence the queue
         """
-        return np.array([load_image(x, self.image_size) for x in random.sample(self.data_list, num)])
+        return np.array([load_image(x, self.image_size)[0] for x in random.sample(self.data_list, num)])
 
 def arr2image(X):
     """
@@ -134,10 +138,8 @@ def res_block(x, dim):
 def NET_G(ngf=64, block_n=6, downsampling_n=2, upsampling_n=2, image_size=256):
     """
     Generative network with Resnet structure
-
     block_n: number added for the Resnet
     Here the parameters are: if the size of picture is 128, use 6；if the size of picture is 256, use 9
-
     [First layer] Convolution layer of size 7, channel number: 3->ngf
     [Down pooling] Convolution layer of size 3, stride = 2, number for every layer doubles
     [Resnet] superposition of 9 block
@@ -266,8 +268,8 @@ class CycleGAN(object):
         updaterG = Adam(lr=lrG, beta_1=0.5).get_updates(lossG, self.GA.trainable_weights + self.GB.trainable_weights)
         updaterD = Adam(lr=lrD, beta_1=0.5).get_updates(lossD, self.DA.trainable_weights + self.DB.trainable_weights)
         # build training function (those 2 can be used to train the network)
-        self.trainG = K.function([realA, realB], [lossGA, lossGB, lossCycA, lossCycB], updaterG)
-        self.trainD = K.function([realA, realB], [lossDA, lossDB], updaterD)
+        self.trainG = K.function([realA, realB], [lossGA, lossGB, lossCycA, lossCycB], updates=updaterG)
+        self.trainD = K.function([realA, realB], [lossDA, lossDB], updates=updaterD)
 
     def get_loss(self, Dreal, Dfake, real, rec):
         """
@@ -283,6 +285,12 @@ class CycleGAN(object):
         errGA, errGB, errCycA, errCycB = self.trainG([A, B])
         return errDA, errDB, errGA, errGB, errCycA, errCycB
 
+    def save(self):
+        self.GA.save("gan_input/model/GA.h5")
+        self.GB.save("gan_input/model/GB.h5")
+        self.DA.save("gan_input/model/DA.h5")
+        self.DB.save("gan_input/model/DB.h5")
+
 
 def train_batch(batchsize, train_A, train_B):
     """
@@ -293,12 +301,11 @@ def train_batch(batchsize, train_A, train_B):
     return max(epa, epb), a, b
 
 def gen(generator, X):
-    # 把X中的每张图都送进generator里面
+    # put every image into X from generator
     r = np.array([generator([np.array([x])]) for x in X])
     g = r[:, 0, 0]
     rec = r[:, 1, 0]
     return g, rec
-
 
 def snapshot(cycleA, cycleB, A, B):
     """
@@ -306,7 +313,6 @@ def snapshot(cycleA, cycleB, A, B):
     A, B are 2 batches
     cycleA is a circle A->B->A
     cycleB is a circle B->A->B
-
     Return a picture
     +-----------+     +-----------+
     | X (in A)  | ... |  Y (in B) | ...
@@ -328,53 +334,54 @@ def snapshot(cycleA, cycleB, A, B):
 
     return arr2image(arr)
 
-# image size in the network
-IMG_SIZE = 128
-# dataset name
-DATASET = "vangogh2photo"
-# dataset path
-dataset_path = "../input/CycleGAN2791/{0}/{0}/".format(DATASET)
-# training set path
-trainA_path = dataset_path + "trainA/*.jpg"
-trainB_path = dataset_path + "trainB/*.jpg"
-train_A = DataSet(trainA_path, image_size = IMG_SIZE)
-train_B = DataSet(trainB_path, image_size = IMG_SIZE)
-# Create the model
-model = CycleGAN(image_size = IMG_SIZE)
-# Train the codes
-from IPython.display import display
 
-EPOCH_NUM = 20
-epoch = 0
+if __name__ == "__main__":
+    # image size in the network
+    IMG_SIZE = 128
+    # dataset path
+    dataset_A_path = "./gan_input/comic/"
+    dataset_B_path = "./gan_input/human/"
+    # training set path
+    trainA_path = dataset_A_path + "train1/*.jpg"
+    trainB_path = dataset_B_path + "train1/*.jpg"
+    train_A = DataSet(trainA_path, image_size=IMG_SIZE)
+    train_B = DataSet(trainB_path, image_size=IMG_SIZE)
+    # Create the model
+    model = CycleGAN(image_size=IMG_SIZE)
+    # Train the codes
+    from IPython.display import display
 
-DISPLAY_INTERVAL = 200
-SNAPSHOT_INTERVAL = 1000
+    EPOCH_NUM = 20
+    epoch = 0
 
-BATCH_SIZE = 1
+    DISPLAY_INTERVAL = 200
+    SNAPSHOT_INTERVAL = 1000
 
-iter_cnt = 0
-err_sum = np.zeros(6)
+    BATCH_SIZE = 1
 
-while epoch < EPOCH_NUM:
-    # get a batch of data
-    epoch, A, B = train_batch(BATCH_SIZE)
-    # train in the network and get error
-    err = model.train(A, B)
-    # accumulate the error
-    err_sum += np.array(err)
-    iter_cnt += 1
-    if (iter_cnt % DISPLAY_INTERVAL == 0):
-        # calculate mean value for error
-        err_avg = err_sum / DISPLAY_INTERVAL
-        print('[iteration%d] discriminator loss: A %f B %f generative loss: A %f B %f cycle loss: A %f B %f'
-              % (iter_cnt,
-                 err_avg[0], err_avg[1], err_avg[2], err_avg[3], err_avg[4], err_avg[5]),
-              )
-        # return to 0
-        err_sum = np.zeros_like(err_sum)
+    iter_cnt = 0
+    err_sum = np.zeros(6)
 
-    if (iter_cnt % SNAPSHOT_INTERVAL == 0):
-        # show the snapshot
-        A = train_A.get_pics(4)
-        B = train_B.get_pics(4)
-        display(snapshot(model.cycleA, model.cycleB, A, B))
+    while epoch < EPOCH_NUM:
+        # get a batch of data
+        epoch, A, B = train_batch(BATCH_SIZE, train_A, train_B)
+        # train in the network and get error
+        err = model.train(A, B)
+        # accumulate the error
+        err_sum += np.array(err)
+        iter_cnt += 1
+        if (iter_cnt % DISPLAY_INTERVAL == 0):
+            # calculate mean value for error
+            err_avg = err_sum / DISPLAY_INTERVAL
+            print('[iteration%d] discriminator loss: A %f B %f generative loss: A %f B %f cycle loss: A %f B %f'
+                  % (iter_cnt,
+                     err_avg[0], err_avg[1], err_avg[2], err_avg[3], err_avg[4], err_avg[5]),
+                  )
+            # return to 0
+            err_sum = np.zeros_like(err_sum)
+
+        if (iter_cnt % SNAPSHOT_INTERVAL == 0):
+            # show the snapshot
+            A = train_A.get_pics(4)
+            B = train_B.get_pics(4)
+            display(snapshot(model.cycleA, model.cycleB, A, B))

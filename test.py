@@ -112,4 +112,27 @@ def test_color_transfer():
     cv.imwrite("result/color_transfer.png", im)
 
 
+def test_cycle_gan():
+    import numpy as np
+    from keras.models import load_model
+    from image.cycleGAN import load_image, arr2image
+
+    model = load_model('gan_input/model/GA.h5')
+    image_size = 128
+    a, shape = load_image("human_pics/img.PNG", image_size)
+    a = np.array([a])
+    b = arr2image(model.predict(a)[0])
+    b = b.resize(shape)
+    b.show()
+    b.save("results/gan_human2comic.jpg")
+
+    model = load_model('gan_input/model/GB.h5')
+    a, shape = load_image("face_pics/ki.png", image_size)
+    a = np.array([a])
+    b = arr2image(model.predict(a)[0])
+    b = b.resize(shape)
+    b.show()
+    b.save("results/gan_comic2human.jpg")
+
+
 test_video()
