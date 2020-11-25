@@ -1,10 +1,12 @@
+from image.dlib_detector import DLIB_DETECTOR
 import cv2 as cv
 
 
 def test_TwoImages():
     from image.image import TwoImages
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="comic_pics/ki.png")
+                  comic_filename="comic_pics/ki.png", detector=detector)
     im = a.compare()
     cv.imshow("Face comparaison", im)
     cv.waitKey(0)
@@ -13,7 +15,8 @@ def test_TwoImages():
 
 def test_rotateImage():
     from image.image import Image
-    a = Image(path="comic_pics/ki.png", convert=True)
+    detector = DLIB_DETECTOR()
+    a = Image(path="comic_pics/ki.png", convert=True, detector=detector)
     a.detect_face()
     cv.imshow("Rotation", a.rotate_image())
     cv.waitKey(0)
@@ -22,8 +25,9 @@ def test_rotateImage():
 
 def test_fusion():
     from image.image import TwoImages
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="comic_pics/ki.png")
+                  comic_filename="comic_pics/ki.png", detector=detector)
     im = a.fusion()
     cv.imshow("Fusion", im)
     cv.waitKey(0)
@@ -32,8 +36,9 @@ def test_fusion():
 
 def test_fusion_rotated():
     from image.image import TwoImages
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="comic_pics/ki.png")
+                  comic_filename="comic_pics/ki.png", detector=detector)
     im = a.fusion_rotated()
     cv.imshow("Fusion_rotated", im)
     cv.waitKey(0)
@@ -42,8 +47,9 @@ def test_fusion_rotated():
 
 def test_TwoImages_with_face():
     from image.image import TwoImages
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="face_pics/sensei.png")
+                  comic_filename="face_pics/sensei.png", detector=detector)
     im = a.compare()
     cv.imshow("Face comparaison", im)
     cv.waitKey(0)
@@ -52,8 +58,9 @@ def test_TwoImages_with_face():
 
 def test_with_face():
     from image.image import TwoImages
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="face_pics/sensei.png")
+                  comic_filename="face_pics/sensei.png",  detector=detector)
     im = a.fusion(face_filename="face_pics/face_sensei.png")
     cv.imshow("Fusion_rotated", im)
     cv.waitKey(0)
@@ -96,6 +103,7 @@ def preprocess():
 
 def test_video():
     from image.video import Video
+    detector = DLIB_DETECTOR()
     a = Video(video_path="video/test_Trim.mp4", comic_path="comic_pics/ki.png")
     a.process_video()
 
@@ -103,8 +111,9 @@ def test_video():
 def test_color_transfer():
     from image.image import TwoImages
     import cv2 as cv
+    detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="comic_pics/ki2.png")
+                  comic_filename="comic_pics/ki2.png", detector=detector)
     im = a.run_fusion(rotate=True, merge=True)
     cv.imshow("rotate and merge", im)
     cv.imwrite("results/ki_merge.png", im)
@@ -135,4 +144,4 @@ def test_cycle_gan():
     b.save("results/gan_comic2human.jpg")
 
 
-test_video()
+test_color_transfer()
