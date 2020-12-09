@@ -192,6 +192,30 @@ class TwoImages():
         '''
         real_pts, comic_pts = self.detect_res()
         self.comic_image.convert2real_image()
+
+        from facemorpher import locator
+        from facemorpher import warper
+        from facemorpher import blender
+        size = (self.height, self.width)
+        percent = 0.5
+        points = locator.weighted_average_points(
+            comic_pts, real_pts, percent)
+        src_face = warper.warp_image(
+            self.comic_image.im, comic_pts, points, size)
+        end_face = warper.warp_image(
+            self.person_image.im, real_pts, points, size)
+        average_face = blender.weighted_average(src_face, end_face, percent)
+        comic_pts = points
+        mask = blender.mask_from_points(size, points)
+        blended_img = blender.poisson_blend(
+            src_face, end_face, mask)
+        cv.imshow("blended", blended_img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+        self.morph_image = average_face
+        self.comic_image.im = blended_img
+
         self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
             self.replace_with_face(face_input=face_input,

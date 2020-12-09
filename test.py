@@ -144,4 +144,4 @@ def test_cycle_gan():
     b.save("results/gan_comic2human.jpg")
 
 
-test_color_transfer()
+test_fusion()
