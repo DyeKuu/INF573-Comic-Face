@@ -1,8 +1,10 @@
 # System package
+from image.dlib_detector import DLIB_DETECTOR
 import numpy as np
 from mtcnn import MTCNN
 import cv2 as cv
 import os
+from typing import Tuple
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 # Third part package
@@ -28,17 +30,25 @@ class Image():
         self.isConverted = False
         if convert:
             self.convert()
-        self.res = None  # detect result by MTCNN
+        self.res = None  # detect result by detector
         self.detector = MTCNN() if detector is None else detector
 
-    def detect_face(self):
-        self.res = self.detector.detect_faces(self.im)[0]["keypoints"]
+    def detect_face(self) -> np.array:
+        """
+        This function will return a 2-dim np.arrary, which is a list of face feature points.
+        The return value will differ according to different detector.
+        """
+        if isinstance(self.detector, MTCNN):
+            self.res = np.array(
+                list(self.detector.detect_faces(self.im)[0]["keypoints"].values()))
+        elif isinstance(self.detector, DLIB_DETECTOR):
+            self.res = self.detector.face_points(self.im)
         self.convert2real_image()
         print(self.res)
 
         return self.res
 
-    def image_shape(self):
+    def image_shape(self) -> Tuple[int, int, int]:
         return self.im.shape
 
     def convert(self):
@@ -54,15 +64,15 @@ class Image():
             self.convert()
 
     def rotate_image(self, apply=False, points=False, rotate_angle=None, rotate_center=None, rotated=False):
-        if rotated:
+        if rotated or isinstance(self.detector, DLIB_DETECTOR):
             if points:
-                return np.array(list(self.res.values()))
+                return self.res
             return self.im
 
         if rotate_angle is None or rotate_angle is None:
-            right_eye = np.array(self.res['right_eye'])
-            left_eye = np.array(self.res['left_eye'])
-            nose = np.array(self.res['nose'])
+            right_eye = self.res[3]
+            left_eye = self.res[2]
+            nose = self.res[0]
             x = (right_eye + left_eye)/2 - nose
             Lx = np.sqrt(x.dot(x))
             cos_angle = -x[1]/Lx
@@ -129,6 +139,7 @@ class TwoImages():
             self.height / self.comic_image.image_shape()[0] * self.comic_image.image_shape()[1])
         self.comic_image.im = cv.resize(self.comic_image.im, (self.comic_width, self.height),
                                         interpolation=cv.INTER_AREA)
+        self.detector = detector
         # self.comic_image.im = cv.resize(self.comic_image.im, (self.height, self.width),
         #                                interpolation=cv.INTER_AREA) # Resize to show the comparison
 
@@ -169,9 +180,9 @@ class TwoImages():
 
         full_image = cv.hconcat([self.person_image.im, self.comic_image.im])
 
-        for k in res1:
-            cv.line(full_image, res1[k], (res2[k][0] +
-                                          self.width, res2[k][1]), (0, 255, 0), thickness=2)
+        for k in range(len(res1)):
+            cv.line(full_image, tuple(res1[k]), (res2[k][0] +
+                                                 self.width, res2[k][1]), (0, 255, 0), thickness=2)
 
         return full_image
 
@@ -181,8 +192,7 @@ class TwoImages():
         '''
         real_pts, comic_pts = self.detect_res()
         self.comic_image.convert2real_image()
-        self.M, _mask = cv.findHomography(np.array(list(comic_pts.values())), np.array(
-            list(real_pts.values())), cv.RANSAC, 5.0)
+        self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
             self.replace_with_face(face_input=face_input,
                                    face_filename=face_filename)
@@ -204,6 +214,8 @@ class TwoImages():
         Precisely, we rotate our 2 images into the front, and then calculate H by two front images, and at last rotate
         to the original position.
         '''
+        if isinstance(self.detector, DLIB_DETECTOR):
+            return self.fusion()
         self.detect_res()
         # TODO: do not know why the result is different is we do rotation first and save image
         self.comic_image.rotate_image(apply=True)
