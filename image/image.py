@@ -217,7 +217,6 @@ class TwoImages():
         if isinstance(self.detector, DLIB_DETECTOR):
             return self.fusion()
         self.detect_res()
-        # TODO: do not know why the result is different is we do rotation first and save image
         self.comic_image.rotate_image(apply=True)
         comic_pts = self.comic_image.rotate_image(apply=False, points=True)
         real_pts = self.person_image.rotate_image(apply=False, points=True)

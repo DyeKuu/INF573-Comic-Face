@@ -34,6 +34,17 @@ def test_fusion():
     cv.destroyAllWindows()
 
 
+def test_run_fusion():
+    from image.image import TwoImages
+    detector = DLIB_DETECTOR()
+    a = TwoImages(person_filename="human_pics/img.PNG",
+                  comic_filename="comic_pics/ki.png", detector=detector)
+    im = a.run_fusion()
+    cv.imshow("Fusion", im)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
+
 def test_fusion_rotated():
     from image.image import TwoImages
     detector = DLIB_DETECTOR()
