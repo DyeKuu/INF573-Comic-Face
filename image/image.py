@@ -44,7 +44,6 @@ class Image():
         elif isinstance(self.detector, DLIB_DETECTOR):
             self.res = self.detector.face_points(self.im)
         self.convert2real_image()
-        print(self.res)
 
         return self.res
 

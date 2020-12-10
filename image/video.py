@@ -74,6 +74,7 @@ class VirtualCamera:
             try:
                 im[:, :, :3] = self.comparer.fusion_rotated()
             except:
+                print('failed')
                 im[:, :, :3] = frame
             self.virtual_camera.send(im)
             self.virtual_camera.sleep_until_next_frame()
