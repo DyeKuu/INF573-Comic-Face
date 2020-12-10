@@ -103,7 +103,6 @@ def preprocess():
 
 def test_video():
     from image.video import Video
-    detector = DLIB_DETECTOR()
     a = Video(video_path="video/test_Trim.mp4", comic_path="comic_pics/ki.png")
     a.process_video()
 
@@ -144,4 +143,26 @@ def test_cycle_gan():
     b.save("results/gan_comic2human.jpg")
 
 
-test_fusion()
+def test_virtual_camera():
+    import pyvirtualcam
+    import numpy as np
+
+    with pyvirtualcam.Camera(width=1280, height=720, fps=10) as cam:
+        i = 0
+        while True:
+            print(i)
+            i = i + 1
+            frame = np.zeros((cam.height, cam.width, 4), np.uint8)  # RGBA
+            frame[:, :, :3] = cam.frames_sent % 255  # grayscale animation
+            frame[:, :, 3] = 255
+            cam.send(frame)
+            cam.sleep_until_next_frame()
+
+
+def test_jojo_camera():
+    from image.video import VirtualCamera
+    v = VirtualCamera(comic_path="comic_pics/ki.png")
+    v.process()
+
+
+test_color_transfer()
