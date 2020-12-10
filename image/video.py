@@ -35,7 +35,7 @@ class Video():
             try:
                 a = TwoImages(person_input=frame,
                               comic_input=self.comic_image.im, detector=self.detector)
-                im = a.fusion_rotated()
+                im = a.run_fusion()
                 videoWriter.write(im)
                 if show_process:
                     cv.imshow("new video", im)
@@ -57,25 +57,39 @@ class VirtualCamera:
     def __init__(self,
                  comic_path=None,
                  detector=None):
-        self.comic_image = Image(path=comic_path)
         self.detector = DLIB_DETECTOR() if detector is None else detector
-        self.virtual_camera = pyvirtualcam.Camera(width=640, height=480, fps=20)
-        initial_image = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 4), np.uint8)
+        self.virtual_camera = pyvirtualcam.Camera(width=640, height=480, fps=2)
+        initial_image = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 3), np.uint8)
         self.comparer = TwoImages(person_input=initial_image,
-                      comic_input=self.comic_image.im, detector=self.detector)
+                      comic_input=cv.imread(comic_path), detector=self.detector)
         self.camera = cv.VideoCapture(0)
 
-    def process(self):
+    def run(self,
+            rotate=False,
+            merge=True,
+            merge_color=False,
+            face_input=None,
+            face_filename=None):
+        debug = False
+
         while True:
             ret, frame = self.camera.read()
-            self.comparer.person_image = Image(input=frame, detector=self.detector)
+            self.comparer.reset_person(person_input=frame)
             im = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 4), np.uint8)  # RGBA
             im[:,:,3] = 255
             try:
-                im[:, :, :3] = self.comparer.fusion_rotated()
+                frame = self.comparer.run_fusion(rotate=rotate,
+                                                        merge=merge,
+                                                        merge_color=merge_color,
+                                                        face_input=face_input,
+                                                        face_filename=face_filename)
+                if debug:
+                    print(self.comparer.person_image.isConverted)
+                    print(self.comparer.comic_image.isConverted)
             except:
                 print('failed')
-                im[:, :, :3] = frame
+
+            im[:, :, :3] = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
             self.virtual_camera.send(im)
             self.virtual_camera.sleep_until_next_frame()
             self.virtual_camera.sleep_until_next_frame()
