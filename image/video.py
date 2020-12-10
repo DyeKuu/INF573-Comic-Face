@@ -35,7 +35,7 @@ class Video():
             try:
                 a = TwoImages(person_input=frame,
                               comic_input=self.comic_image.im, detector=self.detector)
-                im = a.run_fusion()
+                im = a.run()
                 videoWriter.write(im)
                 if show_process:
                     cv.imshow("new video", im)
@@ -79,11 +79,11 @@ class VirtualCamera:
             im = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 4), np.uint8)  # RGBA
             im[:,:,3] = 255
             try:
-                frame = self.comparer.run_fusion(rotate=rotate,
-                                                        merge=merge,
-                                                        merge_color=merge_color,
-                                                        face_input=face_input,
-                                                        face_filename=face_filename)
+                frame = self.comparer.run(rotate=rotate,
+                                          merge=merge,
+                                          merge_color=merge_color,
+                                          face_input=face_input,
+                                          face_filename=face_filename)
                 if debug:
                     print(self.comparer.person_image.isConverted)
                     print(self.comparer.comic_image.isConverted)

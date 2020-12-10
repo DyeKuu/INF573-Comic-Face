@@ -343,7 +343,7 @@ class TwoImages():
 
         return tmp
 
-    def run_fusion(self, rotate=False, merge=True, merge_color=False, face_input=None, face_filename=None):
+    def run(self, rotate=False, merge=True, merge_color=False, face_input=None, face_filename=None):
         if merge_color:
             self.transfer_color(apply=True)
         if not rotate:
