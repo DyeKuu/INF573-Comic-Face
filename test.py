@@ -165,4 +165,4 @@ def test_jojo_camera():
     v.process()
 
 
-test_color_transfer()
+test_jojo_camera()
