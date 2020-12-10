@@ -2,20 +2,17 @@ import cv2
 import numpy as np
 import os.path as path
 import dlib
-import os
 
 
 class DLIB_DETECTOR():
 
     def __init__(self):
-        DATA_DIR = os.environ.get(
-            'DLIB_DATA_DIR',
-            path.join(path.dirname(path.dirname(
-                path.realpath(__file__))), 'data')
-        )
         self.dlib_detector = dlib.get_frontal_face_detector()
+
+        model_path = path.join(path.dirname("__file__"),
+                               'model\shape_predictor_68_face_landmarks.dat')
         self.dlib_predictor = dlib.shape_predictor(
-            path.join(DATA_DIR, 'shape_predictor_68_face_landmarks.dat'))
+            model_path)
 
     def boundary_points(self, points, width_percent=0.1, height_percent=0.1):
         """ Produce additional boundary points
@@ -65,3 +62,28 @@ class DLIB_DETECTOR():
         except Exception as e:
             print(e)
             return []
+
+
+def average_points(point_set):
+    """ Averages a set of face points from images
+
+    :param point_set: *n* x *m* x 2 array of face points. \\
+    *n* = number of images. *m* = number of face points per image
+    """
+    return np.mean(point_set, 0).astype(np.int32)
+
+
+def weighted_average_points(start_points, end_points, percent=0.5):
+    """ Weighted average of two sets of supplied points
+
+    :param start_points: *m* x 2 array of start face points.
+    :param end_points: *m* x 2 array of end face points.
+    :param percent: [0, 1] percentage weight on start_points
+    :returns: *m* x 2 array of weighted average points
+    """
+    if percent <= 0:
+        return end_points
+    elif percent >= 1:
+        return start_points
+    else:
+        return np.asarray(start_points*percent + end_points*(1-percent), np.int32)

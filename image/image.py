@@ -1,10 +1,14 @@
 # System package
 from image.dlib_detector import DLIB_DETECTOR
+from image.dlib_detector import weighted_average_points
+from image.warper import warp_image
+from image.blender import weighted_average, mask_from_points, alpha_feathering
 import numpy as np
 from mtcnn import MTCNN
 import cv2 as cv
 import os
 from typing import Tuple
+
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 # Third part package
@@ -186,27 +190,6 @@ class TwoImages():
 
         return full_image
 
-    def merge_img(src_img, dst_img, dst_matrix, dst_points, k_size=None, mat_multiple=None):
-        face_mask = np.zeros(src_img.shape, dtype=src_img.dtype)
-
-        for group in core.OVERLAY_POINTS:
-            cv2.fillConvexPoly(face_mask, cv2.convexHull(
-                dst_matrix[group]), (255, 255, 255))
-
-        r = cv2.boundingRect(np.float32([dst_points[:core.FACE_END]]))
-
-        center = (r[0] + int(r[2] / 2), r[1] + int(r[3] / 2))
-
-        if mat_multiple:
-            mat = cv2.getRotationMatrix2D(center, 0, mat_multiple)
-            face_mask = cv2.warpAffine(
-                face_mask, mat, (face_mask.shape[1], face_mask.shape[0]))
-
-        if k_size:
-            face_mask = cv2.blur(face_mask, k_size, center)
-
-        return cv2.seamlessClone(np.uint8(dst_img), src_img, face_mask, center, cv2.NORMAL_CLONE)
-
     def fusion(self, face_input=None, face_filename=None):
         '''
         Compare two images and calculate H matrix directly
@@ -214,57 +197,53 @@ class TwoImages():
         real_pts, comic_pts = self.detect_res()
         self.comic_image.convert2real_image()
 
-        from facemorpher import locator
-        from facemorpher import warper
-        from facemorpher import blender
         size = (self.height, self.width)
+        # TODO: We can pass it as an argument?
         percent = 0.7
-        points = locator.weighted_average_points(
+        points = weighted_average_points(
             comic_pts, real_pts, percent)
-        src_face = warper.warp_image(
+        src_face = warp_image(
             self.comic_image.im, comic_pts, points, size)
-        end_face = warper.warp_image(
+        end_face = warp_image(
             self.person_image.im, real_pts, points, size)
-        average_face = blender.weighted_average(src_face, end_face, percent)
-        comic_pts = points
-        mask = blender.mask_from_points(size, points)
-        blended_img = blender.poisson_blend(
-            src_face, end_face, mask)
-        cv.imshow("blended", blended_img)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        feather_img = blender.alpha_feathering(
-            src_face, end_face, mask, blur_radius=100)
-        # feather_img= cv.seamlessClone(np.uint8(), src_img, face_mask, center, cv2.NORMAL_CLONE)
-        cv.imshow("feather", feather_img)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        self.morph_image = average_face
-        self.comic_image.im = feather_img
+        average_face = weighted_average(src_face, end_face, percent)
+        new_comic_pts = points
 
-        self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
+        mask = mask_from_points(size, points)
+
+        feather_face = alpha_feathering(
+            average_face, end_face, mask, blur_radius=80)
+        # cv.imshow("feather", feather_img)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+        # self.morph_face = average_face
+        # self.feather_face = feather_face
+
+        self.M, _mask = cv.findHomography(
+            new_comic_pts, real_pts, cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
             self.replace_with_face(face_input=face_input,
                                    face_filename=face_filename)
         dst = cv.warpPerspective(
-            self.comic_image.im, self.M, (self.width, self.height))  # wraped image
-        cv.imshow("feather", dst)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        wellwell = cv.seamlessClone(
-            dst, self.person_image.im, blender.mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
-        cv.imshow("wellwell", wellwell)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        for i in range(self.height):
-            if (dst[i, ] == 0).all():
-                dst[i, ] = self.person_image.im[i, ]
-                continue
-            for j in range(self.width):
-                if (dst[i, j] == 0).all():
-                    dst[i, j] = self.person_image.im[i, j]
+            feather_face, self.M, (self.width, self.height))  # wraped image
+        # cv.imshow("feather", dst)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+        fusion_image = cv.seamlessClone(
+            dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
+        # cv.imshow("wellwell", wellwell)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
 
-        return dst
+        # for i in range(self.height):
+        #     if (dst[i, ] == 0).all():
+        #         dst[i, ] = self.person_image.im[i, ]
+        #         continue
+        #     for j in range(self.width):
+        #         if (dst[i, j] == 0).all():
+        #             dst[i, j] = self.person_image.im[i, j]
+
+        return fusion_image
 
     def fusion_rotated(self, face_input=None, face_filename=None):
         '''
