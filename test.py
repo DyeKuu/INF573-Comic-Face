@@ -184,4 +184,4 @@ def test_jojo_camera():
     v.run(merge=False)
 
 
-test_color_transfer()
+test_jojo_camera()

@@ -53,6 +53,7 @@ class Video():
 
         return videoWriter
 
+
 class VirtualCamera:
     def __init__(self,
                  comic_path=None,
