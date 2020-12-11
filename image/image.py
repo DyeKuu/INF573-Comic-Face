@@ -1,12 +1,16 @@
 # System package
 from image.dlib_detector import DLIB_DETECTOR
+from image.dlib_detector import weighted_average_points
+from image.warper import warp_image
+from image.blender import weighted_average, mask_from_points, alpha_feathering
 import numpy as np
 from mtcnn import MTCNN
 import cv2 as cv
 import os
 from typing import Tuple
-os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
+
+# os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+# os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 # Third part package
 
 
@@ -44,7 +48,6 @@ class Image():
         elif isinstance(self.detector, DLIB_DETECTOR):
             self.res = self.detector.face_points(self.im)
         self.convert2real_image()
-        print(self.res)
 
         return self.res
 
@@ -62,6 +65,7 @@ class Image():
     def convert2real_image(self):
         if self.isConverted:
             self.convert()
+            self.isConverted = False
 
     def rotate_image(self, apply=False, points=False, rotate_angle=None, rotate_center=None, rotated=False):
         if rotated or isinstance(self.detector, DLIB_DETECTOR):
@@ -140,8 +144,9 @@ class TwoImages():
         self.comic_image.im = cv.resize(self.comic_image.im, (self.comic_width, self.height),
                                         interpolation=cv.INTER_AREA)
         self.detector = detector
-        # self.comic_image.im = cv.resize(self.comic_image.im, (self.height, self.width),
-        #                                interpolation=cv.INTER_AREA) # Resize to show the comparison
+
+        self.comic_pts = None
+        self.real_pts = None
 
         self.fusion_res = None  # fusion result of those two images
 
@@ -167,8 +172,11 @@ class TwoImages():
         self.comic_image.im = face_im
 
     def detect_res(self):
-        self.person_image.detect_face()
-        self.comic_image.detect_face()
+        if self.person_image.res is None:
+            self.person_image.detect_face()
+        if self.comic_image.res is None:
+            self.comic_image.detect_face()
+
         return self.person_image.res, self.comic_image.res
 
     def compare(self):
@@ -186,85 +194,61 @@ class TwoImages():
 
         return full_image
 
-    def merge_img(src_img, dst_img, dst_matrix, dst_points, k_size=None, mat_multiple=None):
-        face_mask = np.zeros(src_img.shape, dtype=src_img.dtype)
+    def reset_person(self, person_input=None,  person_filename=None):
+        self.person_image = Image(
+            input=person_input, path=person_filename, detector=self.detector)
 
-        for group in core.OVERLAY_POINTS:
-            cv2.fillConvexPoly(face_mask, cv2.convexHull(
-                dst_matrix[group]), (255, 255, 255))
-
-        r = cv2.boundingRect(np.float32([dst_points[:core.FACE_END]]))
-
-        center = (r[0] + int(r[2] / 2), r[1] + int(r[3] / 2))
-
-        if mat_multiple:
-            mat = cv2.getRotationMatrix2D(center, 0, mat_multiple)
-            face_mask = cv2.warpAffine(
-                face_mask, mat, (face_mask.shape[1], face_mask.shape[0]))
-
-        if k_size:
-            face_mask = cv2.blur(face_mask, k_size, center)
-
-        return cv2.seamlessClone(np.uint8(dst_img), src_img, face_mask, center, cv2.NORMAL_CLONE)
-
-    def fusion(self, face_input=None, face_filename=None):
+    def fusion(self, face_input=None, face_filename=None, debug=False, merge=True):
         '''
         Compare two images and calculate H matrix directly
         '''
-        real_pts, comic_pts = self.detect_res()
-        self.comic_image.convert2real_image()
-
-        from facemorpher import locator
-        from facemorpher import warper
-        from facemorpher import blender
+        self.detect_res()
+        comic_pts = self.comic_image.res
+        real_pts = self.person_image.res
         size = (self.height, self.width)
-        percent = 0.7
-        points = locator.weighted_average_points(
-            comic_pts, real_pts, percent)
-        src_face = warper.warp_image(
-            self.comic_image.im, comic_pts, points, size)
-        end_face = warper.warp_image(
-            self.person_image.im, real_pts, points, size)
-        average_face = blender.weighted_average(src_face, end_face, percent)
-        comic_pts = points
-        mask = blender.mask_from_points(size, points)
-        blended_img = blender.poisson_blend(
-            src_face, end_face, mask)
-        cv.imshow("blended", blended_img)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        feather_img = blender.alpha_feathering(
-            src_face, end_face, mask, blur_radius=100)
-        # feather_img= cv.seamlessClone(np.uint8(), src_img, face_mask, center, cv2.NORMAL_CLONE)
-        cv.imshow("feather", feather_img)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        self.morph_image = average_face
-        self.comic_image.im = feather_img
 
-        self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
-        if face_input is not None or face_filename is not None:
-            self.replace_with_face(face_input=face_input,
-                                   face_filename=face_filename)
-        dst = cv.warpPerspective(
-            self.comic_image.im, self.M, (self.width, self.height))  # wraped image
-        cv.imshow("feather", dst)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        wellwell = cv.seamlessClone(
-            dst, self.person_image.im, blender.mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
-        cv.imshow("wellwell", wellwell)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        for i in range(self.height):
-            if (dst[i, ] == 0).all():
-                dst[i, ] = self.person_image.im[i, ]
-                continue
-            for j in range(self.width):
-                if (dst[i, j] == 0).all():
-                    dst[i, j] = self.person_image.im[i, j]
+        if merge:
+            percent = 0.7
+            points = weighted_average_points(
+                comic_pts, real_pts, percent)
+            src_face = warp_image(
+                self.comic_image.im, comic_pts, points, size)
+            end_face = warp_image(
+                self.person_image.im, real_pts, points, size)
+            new_comic_pts = points
 
-        return dst
+            average_face = weighted_average(src_face, end_face, percent)
+            mask = mask_from_points(size, points)
+            face = alpha_feathering(
+                average_face, end_face, mask, blur_radius=80)
+
+            if debug:
+                cv.imshow("feather", face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+            self.M, _mask = cv.findHomography(
+                new_comic_pts, real_pts, cv.RANSAC, 5.0)
+            dst = cv.warpPerspective(
+                face, self.M, (self.width, self.height))  # wraped image
+            fusion_image = cv.seamlessClone(
+                dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
+
+        else:
+            self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
+            if face_input is not None or face_filename is not None:
+                self.replace_with_face(face_input=face_input,
+                                       face_filename=face_filename)
+            fusion_image = cv.warpPerspective(self.comic_image.im, self.M, (self.width, self.height))  # wraped image
+            for i in range(self.height):
+                if (fusion_image[i,] == 0).all():
+                    fusion_image[i,] = self.person_image.im[i,]
+                    continue
+                for j in range(self.width):
+                    if (fusion_image[i, j] == 0).all():
+                        fusion_image[i, j] = self.person_image.im[i, j]
+
+        return fusion_image
 
     def fusion_rotated(self, face_input=None, face_filename=None):
         '''
@@ -275,11 +259,9 @@ class TwoImages():
         if isinstance(self.detector, DLIB_DETECTOR):
             return self.fusion()
         self.detect_res()
-        # TODO: do not know why the result is different is we do rotation first and save image
         self.comic_image.rotate_image(apply=True)
         comic_pts = self.comic_image.rotate_image(apply=False, points=True)
         real_pts = self.person_image.rotate_image(apply=False, points=True)
-        # comic_pts = self.comic_image.rotate_image(apply=False, points=True, rotated=True)
 
         self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
         if face_input is not None or face_filename is not None:
@@ -303,14 +285,6 @@ class TwoImages():
                     dst[i, j] = self.person_image.im[i, j]
 
         return dst
-
-    def run_fusion(self, rotate=True, merge=False, face_input=None, face_filename=None):
-        if merge:
-            self.transfer_color(apply=True)
-        if not rotate:
-            return self.fusion(face_input=face_input, face_filename=face_filename)
-        else:
-            return self.fusion_rotated(face_input=face_input, face_filename=face_filename)
 
     @staticmethod
     def image_stats(image):
@@ -368,3 +342,11 @@ class TwoImages():
             self.comic_image.im = tmp
 
         return tmp
+
+    def run(self, rotate=False, merge=True, merge_color=False, face_input=None, face_filename=None):
+        if merge_color:
+            self.transfer_color(apply=True)
+        if not rotate:
+            return self.fusion(face_input=face_input, face_filename=face_filename, merge=merge)
+        else:
+            return self.fusion_rotated(face_input=face_input, face_filename=face_filename)
