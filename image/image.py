@@ -4,7 +4,6 @@ from image.warper import warp_image
 from image.dlib_detector import weighted_average_points, DLIB_DETECTOR
 from typing import Tuple
 import cv2 as cv
-from mtcnn import MTCNN
 import numpy as np
 import os
 os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -39,11 +38,15 @@ class Image():
         This function will return a 2-dim np.arrary, which is a list of face feature points.
         The return value will differ according to different detector.
         """
-        if isinstance(self.detector, MTCNN):
-            self.res = np.array(
-                list(self.detector.detect_faces(self.im)[0]["keypoints"].values()))
-        elif isinstance(self.detector, DLIB_DETECTOR):
+        if isinstance(self.detector, DLIB_DETECTOR):
             self.res = self.detector.face_points(self.im)
+        else:
+            try:
+                self.res = np.array(
+                    list(self.detector.detect_faces(self.im)[0]["keypoints"].values()))
+            except:
+                print("Please provide either MTCNN or DLIB as detector")
+
         self.convert2real_image()
 
         return self.res

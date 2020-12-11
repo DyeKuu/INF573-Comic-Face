@@ -14,13 +14,14 @@ class Video():
 
     def __init__(self,
                  video_path=None,
-                 comic_path=None, detector=None):
+                 comic_path=None, detector=None, merge=True):
         self.video = cv.VideoCapture(video_path)
         self.comic_image = Image(path=comic_path)
         self.cur_human_image = None
         self.fps = self.video.get(cv.CAP_PROP_FPS)
         self.size = (int(self.video.get(cv.CAP_PROP_FRAME_WIDTH)),
                      int(self.video.get(cv.CAP_PROP_FRAME_HEIGHT)))
+        self.merge = merge
         self.detector = DLIB_DETECTOR() if detector is None else detector
 
     def process_video(self, show_process=False):
@@ -34,7 +35,7 @@ class Video():
             try:
                 a = TwoImages(person_input=frame,
                               comic_input=self.comic_image.im, detector=self.detector)
-                im = a.run()
+                im = a.run(merge=self.merge)
                 videoWriter.write(im)
                 if show_process:
                     cv.imshow("new video", im)
