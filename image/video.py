@@ -3,7 +3,6 @@ from image.dlib_detector import DLIB_DETECTOR
 import cv2 as cv
 # Inside import
 from image.image import Image, TwoImages
-from mtcnn import MTCNN
 import pyvirtualcam
 import numpy as np
 
@@ -60,9 +59,10 @@ class VirtualCamera:
                  detector=None):
         self.detector = DLIB_DETECTOR() if detector is None else detector
         self.virtual_camera = pyvirtualcam.Camera(width=640, height=480, fps=2)
-        initial_image = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 3), np.uint8)
+        initial_image = np.zeros(
+            (self.virtual_camera.height, self.virtual_camera.width, 3), np.uint8)
         self.comparer = TwoImages(person_input=initial_image,
-                      comic_input=cv.imread(comic_path), detector=self.detector)
+                                  comic_input=cv.imread(comic_path), detector=self.detector)
         self.camera = cv.VideoCapture(0)
 
     def run(self,
@@ -76,8 +76,9 @@ class VirtualCamera:
         while True:
             ret, frame = self.camera.read()
             self.comparer.reset_person(person_input=frame)
-            im = np.zeros((self.virtual_camera.height, self.virtual_camera.width, 4), np.uint8)  # RGBA
-            im[:,:,3] = 255
+            im = np.zeros((self.virtual_camera.height,
+                           self.virtual_camera.width, 4), np.uint8)  # RGBA
+            im[:, :, 3] = 255
             try:
                 frame = self.comparer.run(rotate=rotate,
                                           merge=merge,

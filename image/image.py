@@ -6,12 +6,7 @@ from image.blender import weighted_average, mask_from_points, alpha_feathering
 import numpy as np
 from mtcnn import MTCNN
 import cv2 as cv
-import os
 from typing import Tuple
-
-# os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
-# os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
-# Third part package
 
 
 class Image():
@@ -235,14 +230,16 @@ class TwoImages():
                 dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
 
         else:
-            self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
+            self.M, _mask = cv.findHomography(
+                comic_pts, real_pts, cv.RANSAC, 5.0)
             if face_input is not None or face_filename is not None:
                 self.replace_with_face(face_input=face_input,
                                        face_filename=face_filename)
-            fusion_image = cv.warpPerspective(self.comic_image.im, self.M, (self.width, self.height))  # wraped image
+            fusion_image = cv.warpPerspective(
+                self.comic_image.im, self.M, (self.width, self.height))  # wraped image
             for i in range(self.height):
-                if (fusion_image[i,] == 0).all():
-                    fusion_image[i,] = self.person_image.im[i,]
+                if (fusion_image[i, ] == 0).all():
+                    fusion_image[i, ] = self.person_image.im[i, ]
                     continue
                 for j in range(self.width):
                     if (fusion_image[i, j] == 0).all():
