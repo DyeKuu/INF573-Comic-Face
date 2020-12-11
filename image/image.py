@@ -1,12 +1,14 @@
 # System package
-from image.dlib_detector import DLIB_DETECTOR
-from image.dlib_detector import weighted_average_points
-from image.warper import warp_image
 from image.blender import weighted_average, mask_from_points, alpha_feathering
-import numpy as np
-from mtcnn import MTCNN
-import cv2 as cv
+from image.warper import warp_image
+from image.dlib_detector import weighted_average_points, DLIB_DETECTOR
 from typing import Tuple
+import cv2 as cv
+from mtcnn import MTCNN
+import numpy as np
+import os
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 
 
 class Image():
@@ -30,7 +32,7 @@ class Image():
         if convert:
             self.convert()
         self.res = None  # detect result by detector
-        self.detector = MTCNN() if detector is None else detector
+        self.detector = DLIB_DETECTOR() if detector is None else detector
 
     def detect_face(self) -> np.array:
         """
