@@ -1,10 +1,11 @@
 from image.dlib_detector import DLIB_DETECTOR
+from mtcnn import MTCNN
 import cv2 as cv
 
 
 def test_TwoImages():
     from image.image import TwoImages
-    detector = DLIB_DETECTOR()
+    detector = MTCNN()
     a = TwoImages(person_filename="human_pics/img.PNG",
                   comic_filename="comic_pics/ki.png", detector=detector)
     im = a.compare()
@@ -35,11 +36,19 @@ def test_fusion():
 
 
 def test_run_fusion():
+    from image.dlib_detector import DLIB_DETECTOR
+    import cv2 as cv
     from image.image import TwoImages
     detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
                   comic_filename="comic_pics/ki.png", detector=detector)
-    im = a.run_fusion()
+    im = a.run(merge=True)
+    cv.imshow("Fusion", im)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+    print(a.person_image.isConverted)
+    print(a.comic_image.isConverted)
+    im = a.run(merge=False)
     cv.imshow("Fusion", im)
     cv.waitKey(0)
     cv.destroyAllWindows()
@@ -114,7 +123,6 @@ def preprocess():
 
 def test_video():
     from image.video import Video
-    detector = DLIB_DETECTOR()
     a = Video(video_path="video/test_Trim.mp4", comic_path="comic_pics/ki.png")
     a.process_video()
 
@@ -125,7 +133,7 @@ def test_color_transfer():
     detector = DLIB_DETECTOR()
     a = TwoImages(person_filename="human_pics/img.PNG",
                   comic_filename="comic_pics/ki2.png", detector=detector)
-    im = a.run_fusion(rotate=True, merge=True)
+    im = a.run(rotate=True, merge=True)
     cv.imshow("rotate and merge", im)
     cv.imwrite("results/ki_merge.png", im)
     cv.waitKey(0)
@@ -155,4 +163,26 @@ def test_cycle_gan():
     b.save("results/gan_comic2human.jpg")
 
 
-test_color_transfer()
+def test_virtual_camera():
+    import pyvirtualcam
+    import numpy as np
+
+    with pyvirtualcam.Camera(width=1280, height=720, fps=24) as cam:
+        i = 0
+        while True:
+            print(i)
+            i = i + 1
+            frame = np.zeros((cam.height, cam.width, 4), np.uint8)  # RGBA
+            frame[:, :, :3] = cam.frames_sent % 255  # grayscale animation
+            frame[:, :, 3] = 255
+            cam.send(frame)
+            cam.sleep_until_next_frame()
+
+
+def test_jojo_camera():
+    from image.video import VirtualCamera
+    v = VirtualCamera(comic_path="comic_pics/ki.png")
+    v.run(merge=False)
+
+
+test_TwoImages()
