@@ -70,6 +70,7 @@ class VirtualCamera:
             rotate=False,
             merge=True,
             merge_color=False,
+            warpH=False,
             face_input=None,
             face_filename=None):
         debug = False
@@ -84,6 +85,7 @@ class VirtualCamera:
                 frame = self.comparer.run(rotate=rotate,
                                           merge=merge,
                                           merge_color=merge_color,
+                                          warpH=warpH,
                                           face_input=face_input,
                                           face_filename=face_filename)
                 if debug:

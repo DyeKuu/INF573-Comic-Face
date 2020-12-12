@@ -148,6 +148,7 @@ class TwoImages():
         self.comic_pts = None
         self.real_pts = None
 
+        self.M = None  # Homographic matrix
         self.fusion_res = None  # fusion result of those two images
 
     def replace_with_face(self, face_input, face_filename):
@@ -198,7 +199,7 @@ class TwoImages():
         self.person_image = Image(
             input=person_input, path=person_filename, detector=self.detector)
 
-    def fusion(self, face_input=None, face_filename=None, debug=False, merge=True):
+    def fusion(self, face_input=None, face_filename=None, debug=False, merge=True, warpH=False):
         '''
         Compare two images and calculate H matrix directly
         '''
@@ -235,13 +236,36 @@ class TwoImages():
                 dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
 
         else:
-            self.M, _mask = cv.findHomography(
+            M, _mask = cv.findHomography(
                 comic_pts, real_pts, cv.RANSAC, 5.0)
             if face_input is not None or face_filename is not None:
                 self.replace_with_face(face_input=face_input,
                                        face_filename=face_filename)
             fusion_image = cv.warpPerspective(
-                self.comic_image.im, self.M, (self.width, self.height))  # wraped image
+                self.comic_image.im, M, (self.width, self.height))  # wraped image
+            if self.M is not None and warpH:
+                a = self.width/15
+                b = 0.7
+                for i in range(self.height):
+                    for j in range(self.width):
+                        old_pos = self.M.dot(np.array([i, j, 1]))
+                        old_pos = old_pos/old_pos[-1]
+                        new_pos = M.dot(np.array([i, j, 1]))
+                        new_pos = new_pos / new_pos[-1]
+                        diff = old_pos[:-1] - new_pos[:-1]
+                        if np.abs(diff).sum() > a:
+                            # new_H = (M*b + self.M*(1-b))
+                            # new_H = new_H/np.sqrt((new_H*new_H).sum()-1)
+                            # new_H[-1, -1] = 1
+                            # real_pos = new_H.dot(np.array([i, j, 1]))
+                            # real_pos = real_pos/real_pos[-1]
+                            # fusion_image[real_pos[0], real_pos[1], :] = fusion_copy[i, j, :]
+                            pos = old_pos*b + new_pos*(1-b)
+                            if int(pos[0])<self.height and int(pos[1])<self.width:
+                                fusion_image[int(pos[0]), int(pos[1]), :] = fusion_image[i, j, :]
+                                fusion_image[i, j, :] = 0
+
+            self.M = M
             for i in range(self.height):
                 if (fusion_image[i, ] == 0).all():
                     fusion_image[i, ] = self.person_image.im[i, ]
@@ -254,6 +278,7 @@ class TwoImages():
 
     def fusion_rotated(self, face_input=None, face_filename=None):
         '''
+        NOT RECOMMENDED!
         Function to optimise the fusion result.
         Precisely, we rotate our 2 images into the front, and then calculate H by two front images, and at last rotate
         to the original position.
@@ -345,10 +370,17 @@ class TwoImages():
 
         return tmp
 
-    def run(self, rotate=False, merge=True, merge_color=False, face_input=None, face_filename=None):
+    def run(self,
+            rotate=False,
+            merge=True,
+            merge_color=False,
+            face_input=None,
+            face_filename=None,
+            warpH=False):
+
         if merge_color:
             self.transfer_color(apply=True)
         if not rotate:
-            return self.fusion(face_input=face_input, face_filename=face_filename, merge=merge)
+            return self.fusion(face_input=face_input, face_filename=face_filename, merge=merge, warpH=warpH)
         else:
             return self.fusion_rotated(face_input=face_input, face_filename=face_filename)

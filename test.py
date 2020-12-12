@@ -182,7 +182,7 @@ def test_virtual_camera():
 def test_jojo_camera():
     from image.video import VirtualCamera
     v = VirtualCamera(comic_path="comic_pics/ki.png")
-    v.run(merge=False)
+    v.run(merge=False, warpH=True)
 
 
 test_TwoImages()
