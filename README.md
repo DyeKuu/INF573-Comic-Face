@@ -12,7 +12,7 @@ The basic third part parckage are
 
 Besides, we need to install and build environment for following 2 packages:
 * [pyvirtualcam](https://github.com/letmaik/pyvirtualcam) : to simulate a virtual camera by python.
-* [dlib](http://dlib.net/): to introduce the face detection deep leaning model
+* [dlib](http://dlib.net/): to introduce the face detection deep leaning model, which is inluded in model/shape_predictor_68_face_landmarks.dat in this project
 
 ### Main apis
 
@@ -34,6 +34,7 @@ And we will get:
 
 `
 Usage: comic_photo.py comic_face.png person_photo.png [-m]
+
 Option: -m : merge the comic face
 `
 
@@ -42,10 +43,22 @@ If we use "-m", then the given comic picture can be any front face of a comic fi
 As an exemple, let us run:
 
 `
-python comic_photo.py comic_pics/ki.png 
-python comic_photo.py comic_pics/ki.png -m
+python comic_photo.py comic_pics/ki.png human_pics/img.PNG
+
+python comic_photo.py comic_pics/ki.png human_pics/img.PNG -m
 `
 
 The two output images are like :
 ![res1](results/replace.png "replacement result")![res2](results/merge.png "merged result")
 
+If you want to use more flexible apis, we are welcomed to search for more usage in the codes!
+
+### Acknowledge
+
+During the development of this project, we are inspired by some existing projects and some codes have helped us to finish it.
+
+They are namely:
+
+* [mtcnn](https://github.com/ipazc/mtcnn)
+* [dlib](https://github.com/davisking/dlib)
+* [face morpher](https://github.com/alyssaq/face_morpher)
