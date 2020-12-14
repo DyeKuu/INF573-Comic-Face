@@ -220,10 +220,21 @@ class TwoImages():
 
             average_face = weighted_average(src_face, end_face, percent)
             mask = mask_from_points(size, points)
-            face = alpha_feathering(
-                average_face, end_face, mask, blur_radius=80)
+            face = average_face
 
             if debug:
+                cv.imshow("src_face", src_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("end_face", end_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("average_face", average_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
                 cv.imshow("feather", face)
                 cv.waitKey(0)
                 cv.destroyAllWindows()
@@ -232,6 +243,12 @@ class TwoImages():
                 new_comic_pts, real_pts, cv.RANSAC, 5.0)
             dst = cv.warpPerspective(
                 face, self.M, (self.width, self.height))  # wraped image
+            if debug:
+                alpha = alpha_feathering(
+                    dst, self.person_image.im, mask_from_points(size, real_pts), blur_radius=10)
+                cv.imshow("alpha", alpha)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
             fusion_image = cv.seamlessClone(
                 dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
 
@@ -254,12 +271,6 @@ class TwoImages():
                         new_pos = new_pos / new_pos[-1]
                         diff = old_pos[:-1] - new_pos[:-1]
                         if np.abs(diff).sum() > a:
-                            # new_H = (M*b + self.M*(1-b))
-                            # new_H = new_H/np.sqrt((new_H*new_H).sum()-1)
-                            # new_H[-1, -1] = 1
-                            # real_pos = new_H.dot(np.array([i, j, 1]))
-                            # real_pos = real_pos/real_pos[-1]
-                            # fusion_image[real_pos[0], real_pos[1], :] = fusion_copy[i, j, :]
                             pos = old_pos*b + new_pos*(1-b)
                             if int(pos[0])<self.height and int(pos[1])<self.width:
                                 fusion_image[int(pos[0]), int(pos[1]), :] = fusion_image[i, j, :]
