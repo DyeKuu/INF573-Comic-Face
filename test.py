@@ -185,4 +185,4 @@ def test_jojo_camera():
     v.run(merge=False, warpH=True)
 
 
-test_TwoImages()
+test_fusion()
