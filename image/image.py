@@ -1,17 +1,13 @@
 # System package
-from image.dlib_detector import DLIB_DETECTOR
-from image.dlib_detector import weighted_average_points
-from image.warper import warp_image
 from image.blender import weighted_average, mask_from_points, alpha_feathering
-import numpy as np
-from mtcnn import MTCNN
-import cv2 as cv
-import os
+from image.warper import warp_image
+from image.dlib_detector import weighted_average_points, DLIB_DETECTOR
 from typing import Tuple
-
-# os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
-# os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
-# Third part package
+import cv2 as cv
+import numpy as np
+import os
+os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+os.environ['CUDA_VISIBLE_DEVICES'] = "-1"
 
 
 class Image():
@@ -35,18 +31,22 @@ class Image():
         if convert:
             self.convert()
         self.res = None  # detect result by detector
-        self.detector = MTCNN() if detector is None else detector
+        self.detector = DLIB_DETECTOR() if detector is None else detector
 
     def detect_face(self) -> np.array:
         """
         This function will return a 2-dim np.arrary, which is a list of face feature points.
         The return value will differ according to different detector.
         """
-        if isinstance(self.detector, MTCNN):
-            self.res = np.array(
-                list(self.detector.detect_faces(self.im)[0]["keypoints"].values()))
-        elif isinstance(self.detector, DLIB_DETECTOR):
+        if isinstance(self.detector, DLIB_DETECTOR):
             self.res = self.detector.face_points(self.im)
+        else:
+            try:
+                self.res = np.array(
+                    list(self.detector.detect_faces(self.im)[0]["keypoints"].values()))
+            except:
+                print("Please provide either MTCNN or DLIB as detector")
+
         self.convert2real_image()
 
         return self.res
@@ -219,10 +219,21 @@ class TwoImages():
 
             average_face = weighted_average(src_face, end_face, percent)
             mask = mask_from_points(size, points)
-            face = alpha_feathering(
-                average_face, end_face, mask, blur_radius=80)
+            face = average_face
 
             if debug:
+                cv.imshow("src_face", src_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("end_face", end_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("average_face", average_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
                 cv.imshow("feather", face)
                 cv.waitKey(0)
                 cv.destroyAllWindows()
@@ -231,18 +242,26 @@ class TwoImages():
                 new_comic_pts, real_pts, cv.RANSAC, 5.0)
             dst = cv.warpPerspective(
                 face, self.M, (self.width, self.height))  # wraped image
+            if debug:
+                alpha = alpha_feathering(
+                    dst, self.person_image.im, mask_from_points(size, real_pts), blur_radius=10)
+                cv.imshow("alpha", alpha)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
             fusion_image = cv.seamlessClone(
                 dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
 
         else:
-            self.M, _mask = cv.findHomography(comic_pts, real_pts, cv.RANSAC, 5.0)
+            self.M, _mask = cv.findHomography(
+                comic_pts, real_pts, cv.RANSAC, 5.0)
             if face_input is not None or face_filename is not None:
                 self.replace_with_face(face_input=face_input,
                                        face_filename=face_filename)
-            fusion_image = cv.warpPerspective(self.comic_image.im, self.M, (self.width, self.height))  # wraped image
+            fusion_image = cv.warpPerspective(
+                self.comic_image.im, self.M, (self.width, self.height))  # wraped image
             for i in range(self.height):
-                if (fusion_image[i,] == 0).all():
-                    fusion_image[i,] = self.person_image.im[i,]
+                if (fusion_image[i, ] == 0).all():
+                    fusion_image[i, ] = self.person_image.im[i, ]
                     continue
                 for j in range(self.width):
                     if (fusion_image[i, j] == 0).all():
