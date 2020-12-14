@@ -27,9 +27,9 @@ def test_rotateImage():
 def test_fusion():
     from image.image import TwoImages
     detector = DLIB_DETECTOR()
-    a = TwoImages(person_filename="human_pics/img.PNG",
-                  comic_filename="comic_pics/ki.png", detector=detector)
-    im = a.fusion()
+    a = TwoImages(person_filename="human_pics/girl.jpg",
+                  comic_filename="comic_pics/pretty_girl.png", detector=detector)
+    im = a.fusion(debug=True)
     cv.imshow("Fusion", im)
     cv.waitKey(0)
     cv.destroyAllWindows()
@@ -185,4 +185,4 @@ def test_jojo_camera():
     v.run(merge=False)
 
 
-test_TwoImages()
+test_fusion()

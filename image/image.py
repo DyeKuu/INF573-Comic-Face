@@ -219,10 +219,21 @@ class TwoImages():
 
             average_face = weighted_average(src_face, end_face, percent)
             mask = mask_from_points(size, points)
-            face = alpha_feathering(
-                average_face, end_face, mask, blur_radius=80)
+            face = average_face
 
             if debug:
+                cv.imshow("src_face", src_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("end_face", end_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
+                cv.imshow("average_face", average_face)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
+
                 cv.imshow("feather", face)
                 cv.waitKey(0)
                 cv.destroyAllWindows()
@@ -231,6 +242,12 @@ class TwoImages():
                 new_comic_pts, real_pts, cv.RANSAC, 5.0)
             dst = cv.warpPerspective(
                 face, self.M, (self.width, self.height))  # wraped image
+            if debug:
+                alpha = alpha_feathering(
+                    dst, self.person_image.im, mask_from_points(size, real_pts), blur_radius=10)
+                cv.imshow("alpha", alpha)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
             fusion_image = cv.seamlessClone(
                 dst, self.person_image.im, mask_from_points(size, real_pts), tuple(real_pts[30]), cv.NORMAL_CLONE)
 
