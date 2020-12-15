@@ -48,7 +48,8 @@ python comic_photo.py comic_pics/ki.png human_pics/img.PNG
 python comic_photo.py comic_pics/ki.png human_pics/img.PNG -m
 `
 
-The two output images are like :
+The two output images are like:
+
 ![res1](results/replace.png "replacement result")![res2](results/merge.png "merged result")
 
 If you want to use more flexible apis, we are welcomed to search for more usage in the codes!
