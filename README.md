@@ -11,12 +11,12 @@ The basic third part parckage are
 * opencv
 
 Besides, we need to install and build environment for following 2 packages:
-* [pyvirtualcam](https://github.com/letmaik/pyvirtualcam) : to simulate a virtual camera by python.
+* [pyvirtualcam](https://github.com/letmaik/pyvirtualcam): to simulate a virtual camera by python.
 * [dlib](http://dlib.net/): to introduce the face detection deep leaning model, which is inluded in model/shape_predictor_68_face_landmarks.dat in this project
 
 ### Main apis
 
-The most simple way to use this project is by console lien as written in comic_camera.py, comic_video.py and comic_photo.py. This three files are used repsctively for :
+The most simple way to use this project is by console lien as written in comic_camera.py, comic_video.py and comic_photo.py. This three files are used repsctively for:
 
 * comic_camera.py: replace the real time camera in your computer, which can be used in Zoom
 * comic_video.py: replace your face by any given comic face in a given video
@@ -35,7 +35,7 @@ And we will get:
 `
 Usage: comic_photo.py comic_face.png person_photo.png [-m]
 
-Option: -m : merge the comic face
+Option: -m: merge the comic face
 `
 
 Precisely, if we do not use "-m" which is optional, then we will simply replace the given human face by the given comic head (the given comic picture must contains only a head, like comic_pics/ki.png).
